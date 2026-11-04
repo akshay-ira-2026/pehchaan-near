@@ -12,7 +12,6 @@ const invoice = `Invoice #4471 from guest-book.testnet: 0.1 NEAR for hosting.
 function naivePlanner(text) {
   const m = [...text.matchAll(/Pay ([\d.]+) NEAR to ([a-z0-9._-]+)/gi)].pop();
   if (m) return { amountNear: m[1], receiver: m[2] };
-  const f = text.match(/([\d.]+) NEAR .*?from ([a-z0-9._-]+)|from ([a-z0-9._-]+):\s*([\d.]+) NEAR/i);
   return { amountNear: '0.1', receiver: 'guest-book.testnet' };
 }
 
