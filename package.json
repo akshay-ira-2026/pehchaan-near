@@ -1,0 +1,1 @@
+{"name":"pehchaan-near","type":"module","version":"0.1.0","scripts":{"test":"node test/score.test.mjs","test:live":"node test/live.test.mjs","demo:attack":"node demo/attack.mjs"},"license":"MIT"}
