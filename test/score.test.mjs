@@ -1,0 +1,16 @@
+import { score, validAccountId } from '../src/check.js';
+import { SEED } from '../src/blocklist.js';
+import assert from 'node:assert/strict';
+const base = { receiver: 'old.testnet', exists: true, isContract: false, txnCount: 500, firstSeenDaysAgo: 900 };
+let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok', name); };
+t('established allow', () => assert.equal(score(base).verdict, 'allow'));
+t('blocklist block', () => { const r = score({ ...base, receiver: 'pehchaan-drainer-demo.testnet' }, SEED); assert.equal(r.verdict, 'block'); assert.match(r.reasons[0], /blocklist/); });
+t('missing warn', () => assert.equal(score({ receiver: 'x.testnet', exists: false }).verdict, 'warn'));
+t('new account warn', () => assert.equal(score({ ...base, firstSeenDaysAgo: 2 }).verdict, 'warn'));
+t('low activity warn', () => assert.equal(score({ ...base, txnCount: 1 }).verdict, 'warn'));
+t('code changed warn', () => assert.equal(score({ ...base, isContract: true, codeChangedDaysAgo: 1 }).verdict, 'warn'));
+t('old code ok', () => assert.equal(score({ ...base, isContract: true, codeChangedDaysAgo: 400 }).verdict, 'allow'));
+t('no history warn', () => assert.equal(score({ ...base, firstSeenDaysAgo: null }).verdict, 'warn'));
+t('block beats warn', () => assert.equal(score({ receiver: 'pehchaan-drainer-demo.testnet', exists: false }, SEED).verdict, 'block'));
+t('ids', () => { assert.ok(validAccountId('guest-book.testnet')); assert.ok(!validAccountId('Bad..id')); assert.ok(!validAccountId('a')); });
+console.log(`${n} passed`);
