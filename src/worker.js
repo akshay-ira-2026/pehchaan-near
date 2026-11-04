@@ -9,7 +9,7 @@ async function loadBlocklist(env) {
   const list = [...SEED];
   if (env.REPORTS) {
     const keys = await env.REPORTS.list({ limit: 1000 });
-    for (const k of keys.keys) { const v = await env.REPORTS.get(k.name, 'json'); if (v) list.push(v); }
+    for (const k of keys.keys) { const v = await env.REPORTS.get(k.name, 'json'); if (v) list.push({ ...v, verified: false }); } // anyone can POST a report, so reports warn; only reviewed seed entries block
   }
   return list;
 }

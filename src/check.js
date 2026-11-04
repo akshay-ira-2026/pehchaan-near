@@ -63,17 +63,30 @@ export async function gatherSignals(receiver, agent, opts = {}) {
   return s;
 }
 
+// A blocklisted account controls every sub-account under it (on NEAR only the parent can create one), so those match too.
+// Top-level names (no dot) match exactly, so a single entry can't cover a whole namespace.
+export function blocklistHit(receiver, blocklist = []) {
+  return blocklist.find(b => receiver === b.account || (b.account.includes('.') && receiver.endsWith('.' + b.account)));
+}
+
 // Turn signals + blocklist into allow / warn / block with reasons. Deterministic, unit-tested.
 export function score(signals, blocklist = [], opts = {}) {
   const cfg = { ...DEFAULTS, ...opts };
   const reasons = [];
   let verdict = 'allow';
   const bump = (v) => { const o = { allow: 0, warn: 1, block: 2 }; if (o[v] > o[verdict]) verdict = v; };
-  const hit = blocklist.find(b => b.account === signals.receiver);
-  if (hit) { bump('block'); reasons.push(`on shared blocklist: ${hit.reason} (evidence: ${hit.evidence}, reported by ${hit.reporter})`); }
+  const hit = blocklistHit(signals.receiver, blocklist);
+  if (hit) {
+    const via = hit.account === signals.receiver ? '' : ` (sub-account of ${hit.account}, which only that account could create)`;
+    const why = `${hit.reason}${via} (evidence: ${hit.evidence}, reported by ${hit.reporter})`;
+    if (hit.verified === false) { bump('warn'); reasons.push(`reported but unverified: ${why}`); }
+    else { bump('block'); reasons.push(`on shared blocklist: ${why}`); }
+  }
   if (signals.exists === false) { bump('warn'); reasons.push('account does not exist on chain yet'); }
   else {
-    if (signals.firstSeenDaysAgo == null) { bump('warn'); reasons.push('no transaction history found'); }
+    const unread = signals.indexerErrors || [];
+    if (unread.length) { bump('warn'); reasons.push(`could not read ${unread.length} history signal(s), treated as unknown: ${unread.join('; ')}`); }
+    if (signals.firstSeenDaysAgo == null) { if (!unread.length) { bump('warn'); reasons.push('no transaction history found'); } }
     else if (signals.firstSeenDaysAgo < cfg.newAccountDays) { bump('warn'); reasons.push(`new account: first seen ${signals.firstSeenDaysAgo} day(s) ago`); }
     if (signals.txnCount != null && signals.txnCount < cfg.lowActivityTxns) { bump('warn'); reasons.push(`low activity: ${signals.txnCount} transaction(s)`); }
     if (signals.isContract && signals.codeChangedDaysAgo != null && signals.codeChangedDaysAgo < cfg.recentCodeDays) {
