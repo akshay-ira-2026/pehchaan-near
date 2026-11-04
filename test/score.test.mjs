@@ -13,4 +13,9 @@ t('old code ok', () => assert.equal(score({ ...base, isContract: true, codeChang
 t('no history warn', () => assert.equal(score({ ...base, firstSeenDaysAgo: null }).verdict, 'warn'));
 t('block beats warn', () => assert.equal(score({ receiver: 'pehchaan-drainer-demo.testnet', exists: false }, SEED).verdict, 'block'));
 t('ids', () => { assert.ok(validAccountId('guest-book.testnet')); assert.ok(!validAccountId('Bad..id')); assert.ok(!validAccountId('a')); });
+t('sub-account of blocklisted blocks', () => { const r = score({ ...base, receiver: 'pay.pehchaan-drainer-demo.testnet' }, SEED); assert.equal(r.verdict, 'block'); assert.match(r.reasons[0], /sub-account/); });
+t('lookalike is not a sub-account', () => assert.equal(score({ ...base, receiver: 'xpehchaan-drainer-demo.testnet' }, SEED).verdict, 'allow'));
+t('unverified report only warns', () => { const r = score(base, [{ account: 'old.testnet', reason: 'r', evidence: 'https://x', reporter: 'anyone.testnet', verified: false }]); assert.equal(r.verdict, 'warn'); assert.match(r.reasons[0], /unverified/); });
+t('top-level entry does not cover a namespace', () => assert.equal(score(base, [{ account: 'testnet', reason: 'r', evidence: 'https://x', reporter: 'a.testnet' }]).verdict, 'allow'));
+t('indexer down is unknown, not empty', () => { const r = score({ ...base, firstSeenDaysAgo: null, txnCount: null, indexerErrors: ['indexer 429'] }); assert.equal(r.verdict, 'warn'); assert.ok(!r.reasons.some(x => /no transaction history/.test(x))); });
 console.log(`${n} passed`);
